@@ -1,0 +1,439 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tsar DC - Trees</title>
+    <style type="text/css">
+        * {
+            /*margin: 0;*/
+            padding: 0;
+            font-family: "VT323";
+        }
+
+        body {
+            /*background-color: #000000;*/
+        }
+
+        .wrap {
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+    <script src="../src/bst.js">
+    </script
+</head>
+
+<body>
+    <!-- <h1>Tsar - DC</h1> -->
+    <p>
+        <input type="text" id="nodeValue" value="50"/>
+        <input type="button" value="Add" onclick="insertToTree()" />
+        <input type="button" value="Reset" onclick="resetTree()" />
+        &nbsp;
+        <input type="button" value="Pre Order" onclick="traversePreOrder()" />
+        <input type="button" value="In Order" onclick="traverseInOrder()" />
+        <input type="button" value="Post Order" onclick="traversePostOrder()" />
+        <input type="button" value="Level Order" onclick="traverseLevelOrder()" />
+        &nbsp;
+        <input type="button" value="Min Height" onclick="minHeight()" />
+        <input type="button" value="Max Height" onclick="maxHeight()" />
+        &nbsp;
+        <input type="button" value="Minimum" onclick="minimum()" />
+        <input type="button" value="Maximum" onclick="maximum()" />
+        &nbsp;
+        <input type="button" value="Successor" onclick="successor()" />
+        <input type="button" value="Predecessor" onclick="predecessor()" />
+        &nbsp;
+        <input type="button" value="Remove" onclick="removeNode()" />
+    </p>
+
+    <section contextmenu="nodeMenu">
+        <canvas class="wrap" id="treeCanvas" width="1500" height="600" tabindex="1" style="border:solid blue 1px"></canvas>
+    </section>
+
+
+    <p>
+        <textarea id="logBox" cols="212" rows="14"></textarea>
+    </p>
+
+    <script type="text/javascript" >
+
+        function log(message, noNewLine) {
+            console.log(message);
+
+            var logBox = document.getElementById("logBox");
+            if (message != undefined) {
+                logBox.value += message;
+            }
+
+            if (noNewLine == undefined) {
+                logBox.value += "\r\n";
+            }
+
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        var tree;
+        var treeDepth;
+        var areas = [];
+
+        var canvas;
+        var ctx;
+        var centerX;
+        var centerY;
+        var canvasWidth;
+        var canvasHeight;
+        var radius = 12;
+
+        var selectedNode;
+        var highlightedNode;
+
+        function createTree() {
+            log("Creating a new tree - Template #01");
+            tree = new BST(44);
+            tree.insertList(22, 11, 42, 33, 43, 65, 73, 99, 22, 19, 27, 12, 87, 92, 81, 56, 45, 29, 30, 14);
+        }
+
+        function prepareTree() {
+            log("Refreshing depth & index information of the tree");
+            treeDepth = 0;
+            tree.traversePreOrder(prepareTreeNode);
+        }
+
+        function prepareTreeNode(node) {
+            if (node.parent == undefined) {
+                node.depth = 0;
+                node.index = 1;
+            }
+            else {
+                node.depth = node.parent.depth + 1;
+                if (node == node.parent.left) {
+                    node.index = (node.parent.index * 2) - 1
+                }
+                else {
+                    node.index = node.parent.index * 2;
+                }
+            }
+
+            if (treeDepth < node.depth) {
+                treeDepth = node.depth;
+            }
+        }
+
+        function drawTree() {
+            log("Redrawing tree");
+            prepareCanvas(true);
+
+            tree.traversePreOrder(function (node) {
+                drawNodeConnector(node, node.parent);
+            })
+
+            areas.length = 0;
+            tree.traversePreOrder(function (node) {
+                drawNode(node, true);
+            })
+        }
+
+        function prepareCanvas(clearCanvas) {
+            canvas = document.getElementById("treeCanvas");
+            ctx = canvas.getContext("2d");
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
+            canvasWidth = canvas.width - 100;
+            canvasHeight = canvas.height - 100;
+
+            if(highlightedNode != undefined) {
+                if(highlightedNode == selectedNode) {
+                    drawNode(highlightedNode, false, "Green")
+                }
+                else {
+                    drawNode(highlightedNode, false, "Yellow")
+                }
+
+                highlightedNode = undefined;
+            }
+
+            if(clearCanvas != undefined && clearCanvas == true) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function drawNodeConnector(node1, node2) {
+            var node1X = node1.index * canvasWidth / (Math.pow(2, node1.depth) + 1);
+            var node1Y = node1.depth * canvasHeight / treeDepth + 20;
+
+            if (node2 !== undefined) {
+                // draw line to parent
+                var node2X = node2.index * canvasWidth / (Math.pow(2, node2.depth) + 1);
+                var node2Y = node2.depth * canvasHeight / treeDepth + 20;
+
+                ctx.beginPath();
+                ctx.moveTo(node2X + 6, node2Y - 3);
+                ctx.lineTo(node1X + 6, node1Y - 3);
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+
+        function drawNode(node, updateAreas, fillColor) {
+            var x = node.index * canvasWidth / (Math.pow(2, node.depth) + 1);
+            var y = node.depth * canvasHeight / treeDepth + 20;
+
+            var left = x - radius;
+            var top = y - radius;
+            var right = x + radius;
+            var bottom = y + radius;
+
+            var key = node.key;
+
+            console.log(key + ", " + node.depth + ", " + node.index + ", " + x + ", " + y);
+
+            ctx.beginPath();
+            ctx.arc(x + 6, y - 3, radius, 0, 2 * Math.PI, false);
+            ctx.globalAlpha = 1;
+            if(fillColor != undefined) {
+                ctx.fillStyle = fillColor;
+            }
+            else {
+                ctx.fillStyle = 'Yellow';
+            }
+
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#003300';
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.strokeText(key, x, y);
+            ctx.closePath();
+
+            if(updateAreas != undefined && updateAreas == true) {
+                areas.push({ x, y, left, top, right, bottom, key, node })
+            }
+        }
+
+        function selectNode(node) {
+            prepareCanvas();
+
+            if(selectedNode != undefined) {
+                drawNode(selectedNode, false, "Yellow")
+            }
+
+            if(node == selectedNode) {
+                selectedNode = undefined;
+                log("Unselected " + node.key);
+            }
+            else {
+                selectedNode = node;
+                drawNode(selectedNode, false, "Green")
+                log("Selected " + node.key);
+            }
+        }
+
+        function unselectCurrentSelected() {
+            if(selectedNode != undefined) {
+                prepareCanvas();
+                drawNode(selectedNode, false, "Yellow")
+                selectedNode = undefined;
+            }
+        }
+
+        function highlightNode(node) {
+            prepareCanvas();
+            highlightedNode = node;
+            drawNode(highlightedNode, false, "Brown")
+        }
+
+        function fixTree() {
+            prepareTree();
+            drawTree();
+        }
+
+        function resetTree() {
+            log("Resetting tree");
+            createTree();
+            fixTree();
+        }
+
+        function insertToTree() {
+            var key = document.getElementById('nodeValue').value;
+            log("Inserting " + key + " to tree");
+            tree.insert(key);
+            fixTree();
+        }
+
+        function traversePreOrder() {
+            log("Pre-Order Traversal: ", true);
+            tree.traversePreOrder(function (node) {
+                log(node.key + " ", true);
+            })
+            log();
+        }
+
+        function traverseInOrder() {
+            log("In-Order Traversal: ", true);
+            tree.traverseInOrder(function (node) {
+                log(node.key + " ", true);
+            })
+            log();
+        }
+
+        function traversePostOrder() {
+            log("Post-Order Traversal: ", true);
+            tree.traversePostOrder(function (node) {
+                log(node.key + " ", true);
+            })
+            log();
+        }
+
+        function traverseLevelOrder() {
+            log("Level-Order Traversal: ", true);
+            tree.traverseLevelOrder(function (node) {
+                log(node.key + " ", true);
+            })
+            log();
+        }
+
+         function minHeight() {
+            if(selectedNode == null) {
+                var minHeight = tree.minHeight();
+                log("Minimum height in the tree is " + minHeight);
+            }
+            else {
+                var minHeight = selectedNode.minHeight();
+                log("Minimum height of the subtree rooted at " + selectedNode.key + " is " + minHeight);
+            }
+        }
+
+        function maxHeight() {
+            if(selectedNode == null) {
+                var maxHeight = tree.maxHeight();
+                log("Minimum height in the tree is " + maxHeight);
+            }
+            else {
+                var maxHeight = selectedNode.maxHeight();
+                log("Minimum height  of the subtree rooted at " + selectedNode.key + " is " + maxHeight);
+            }
+        }
+
+        function minimum() {
+            if(selectedNode == null) {
+                var minNode = tree.minimum();
+                log("Minimum value in the tree is " + minNode.key);
+                highlightNode(minNode);
+            }
+            else {
+                var minNode = selectedNode.minimum();
+                log("Minimum value of the subtree rooted at " + selectedNode.key + " is " + minNode.key);
+                highlightNode(minNode);
+            }
+        }
+
+        function maximum() {
+            if(selectedNode == null) {
+                var maxNode = tree.maximum();
+                log("Maximum value in the tree is " + maxNode.key);
+                highlightNode(maxNode);
+            }
+            else {
+                var maxNode = selectedNode.maximum();
+                log("Maximum value of the subtree rooted at " + selectedNode.key + " is " + maxNode.key);
+                highlightNode(maxNode);
+            }
+        }
+
+        function successor() {
+            if(selectedNode == undefined) {
+                return;
+            }
+
+            var successor = selectedNode.successor();
+            if(successor != undefined) {
+                highlightNode(successor);
+                log("Successor of " + selectedNode.key + " is " + successor.key);
+            }
+            else {
+                log("No successor for " + selectedNode.key);
+            }
+        }
+
+        function predecessor() {
+            if(selectedNode == undefined) {
+                return;
+            }
+
+            var predecessor = selectedNode.predecessor();
+            if(predecessor != undefined) {
+                highlightNode(predecessor);
+                log("Predecessor of " + selectedNode.key + " is " + predecessor.key);
+            }
+            else {
+                log("No predecessor for " + selectedNode.key);
+            }
+        }
+
+        function removeNode(node) {
+            if(node == undefined) {
+                if(selectedNode != undefined) {
+                    node = selectedNode;
+                    unselectCurrentSelected();
+                }
+                else {
+                    return;
+                }
+            }
+
+            log("Removing " + node.key + " from tree");
+            tree.removeNode(node);
+            fixTree();
+        }
+
+        function getHitRegionFromCanvas(e) {
+            var canvas = document.getElementById("treeCanvas");
+            var offsetX = canvas.offsetLeft;
+            var offsetY = canvas.offsetTop;
+
+            var x = parseInt(e.clientX - offsetX);
+            var y = parseInt(e.clientY - offsetY);
+
+            for (var i = 0; i < areas.length; i++) {
+                var region = areas[i];
+                if (x >= region.left && x <= region.right && y >= region.top && y <= region.bottom) {
+                    return region;
+                }
+            }
+        }
+
+         function handleCanvasClick(e) {
+            var region = getHitRegionFromCanvas(e);
+            selectNode(region.node);
+
+            e.preventDefault()
+            return (false);
+        }
+
+        function handleCanvasContextmenu(e) {
+            var region = getHitRegionFromCanvas(e);
+            if(region != undefined) {
+                removeNode(region.node);
+            }
+
+            // prevents the usual context from popping up
+            e.preventDefault()
+            return (false);
+        }
+
+        (function () {
+
+            window.onload = function () {
+                var canvas = document.getElementById("treeCanvas");
+                canvas.addEventListener('click', handleCanvasClick, false);
+                canvas.addEventListener('contextmenu', handleCanvasContextmenu, false);
+                resetTree();
+            }
+
+        })();
+    </script>
+    </body>
